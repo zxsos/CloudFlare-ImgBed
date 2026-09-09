@@ -1,4 +1,58 @@
-<!doctype html><html lang=""><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="/logo.png"><link rel="apple-touch-icon" href="/logo.png"><link rel="mask-icon" href="/logo.png" color="#f4b400"><meta name="description" content="zxsos ImgHub - A modern file hosting platform"><meta name="keywords" content="zxsos, ImgHub, file hosting, image hosting, cloud storage"><meta name="author" content="zxsos"><title>zxsos ImgHub</title><script defer="defer" src="/js/app.2ca03bec.js"></script><link href="/css/app.b0a6c83b.css" rel="stylesheet"></head><body><noscript><strong>We're sorry but zxsos_imghub doesn't work properly without JavaScript enabled. Please enable it to continue.</strong></noscript><div id="app"></div></body></html><style>/* 下拉菜单样式 */
+<!doctype html><html lang=""><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="/logo.png"><link rel="apple-touch-icon" href="/logo.png"><link rel="mask-icon" href="/logo.png" color="#f4b400"><meta name="description" content="zxsos ImgHub - A modern file hosting platform"><meta name="keywords" content="zxsos, ImgHub, file hosting, image hosting, cloud storage"><meta name="author" content="zxsos"><title>zxsos ImgHub</title><script defer="defer" src="/js/app.2ca03bec.js"></script><link href="/css/app.b0a6c83b.css" rel="stylesheet"></head><body><noscript><strong>We're sorry but zxsos_imghub doesn't work properly without JavaScript enabled. Please enable it to continue.</strong></noscript><div id="app"></div>
+<script>
+(function () {
+    var ID = 'zxsos-fullscreen-btn';
+    var ENTER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
+    var EXIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3M16 3v3a2 2 0 0 0 2 2h3M8 21v-3a2 2 0 0 0-2-2H3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>';
+
+    function isFullscreen() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
+    function toggle() {
+        var el = document.documentElement;
+        if (!isFullscreen()) {
+            (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+        } else {
+            (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        }
+    }
+
+    function sync() {
+        var b = document.getElementById(ID);
+        if (!b) return;
+        b.innerHTML = isFullscreen() ? EXIT : ENTER;
+        b.title = isFullscreen() ? '退出全屏' : '进入全屏';
+        b.setAttribute('aria-label', b.title);
+    }
+
+    function mount() {
+        if (document.getElementById(ID)) return false;
+        var host = document.querySelector('.toolbar') || document.querySelector('.toolbar-manage');
+        if (!host) return false;
+        var b = document.createElement('button');
+        b.id = ID;
+        b.type = 'button';
+        b.className = 'zxsos-fullscreen-btn';
+        b.addEventListener('click', toggle);
+        host.appendChild(b);
+        sync();
+        return true;
+    }
+
+    document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync);
+
+    // SPA 路由切换会重建工具栏，用观察者保证按钮常驻
+    if (window.MutationObserver) {
+        new MutationObserver(mount).observe(document.body, { childList: true, subtree: true });
+    }
+    document.addEventListener('DOMContentLoaded', mount);
+    mount();
+    setInterval(mount, 1000);
+})();
+</script>
+</body></html><style>/* 下拉菜单样式 */
 .el-dropdown__popper.el-popper {
     border-radius: 12px;
     border: none;
@@ -22,4 +76,29 @@
 /* 加载动画样式 */
 .el-loading-mask {
     border-radius: 12px;
-}</style>
+}
+/* ===== 全屏模式按钮 ===== */
+.zxsos-fullscreen-btn {
+    border: none;
+    transition: all .3s ease;
+    margin: 8px 0 0 0;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 12px;
+    background-color: var(--toolbar-button-bg-color);
+    box-shadow: var(--toolbar-button-shadow);
+    backdrop-filter: blur(10px);
+    color: var(--toolbar-button-color);
+}
+.zxsos-fullscreen-btn:hover { filter: brightness(1.15); transform: scale(1.06); }
+.zxsos-fullscreen-btn:active { transform: scale(.94); }
+.zxsos-fullscreen-btn svg { width: 18px; height: 18px; }
+/* 全屏时铺满，避免黑边 */
+html:fullscreen, html:fullscreen body { width: 100%; height: 100%; }
+:fullscreen::backdrop { background: var(--bg-color); }
+</style>
