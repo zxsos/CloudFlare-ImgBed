@@ -132,6 +132,15 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
     border-radius: 50%; animation: spin .8s linear infinite;
 }
 footer { text-align: center; color: var(--text-dim); font-size: 12px; margin-top: 22px; }
+
+/* 内嵌模式：嵌入管理面板时去掉外框，只留内容 */
+body.embed { background: transparent; padding: 12px 14px 16px; min-height: 0; }
+body.embed h1, body.embed .sub, body.embed footer { display: none; }
+body.embed .wrap { max-width: 100%; }
+body.embed .cards { gap: 10px; margin-bottom: 16px; }
+body.embed .card { padding: 12px 14px; border-radius: 12px; }
+body.embed .panel { border-radius: 12px; box-shadow: none; }
+body.embed .card .value { font-size: 20px; }
 </style>
 </head>
 <body>
@@ -160,6 +169,9 @@ footer { text-align: center; color: var(--text-dim); font-size: 12px; margin-top
 
 <script>
 (function () {
+    var EMBED = location.search.indexOf('embed=1') >= 0;
+    if (EMBED) { document.body.classList.add('embed'); }
+
     var group = 'top';
     var sortKey = 'sizeMb';
     var sortDesc = true;

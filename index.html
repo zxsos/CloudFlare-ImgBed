@@ -1,13 +1,29 @@
 <!doctype html><html lang=""><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="/logo.png"><link rel="apple-touch-icon" href="/logo.png"><link rel="mask-icon" href="/logo.png" color="#f4b400"><meta name="description" content="zxsos ImgHub - A modern file hosting platform"><meta name="keywords" content="zxsos, ImgHub, file hosting, image hosting, cloud storage"><meta name="author" content="zxsos"><title>zxsos ImgHub</title><script defer="defer" src="/js/app.2ca03bec.js"></script><link href="/css/app.b0a6c83b.css" rel="stylesheet"></head><body><noscript><strong>We're sorry but zxsos_imghub doesn't work properly without JavaScript enabled. Please enable it to continue.</strong></noscript><div id="app"></div>
 
+
 <script>
 (function () {
     var WRAP_ID = 'zxsos-tools';
+
+    // 认证码：从地址栏保存到 Cookie，后续管理端接口自动携带
+    (function () {
+        try {
+            var m = location.search.match(/[?&]authCode=([^&]*)/);
+            if (m && m[1]) {
+                document.cookie = 'authCode=' + encodeURIComponent(m[1]) +
+                    '; path=/; max-age=31536000; samesite=lax';
+            }
+        } catch (e) {}
+    })();
+
     var FS_ID = 'zxsos-fullscreen-btn';
+    var STAT_ID = 'zxsos-stats-btn';
+    var MODAL_ID = 'zxsos-stats-modal';
 
     var FS_ENTER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
     var FS_EXIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3M16 3v3a2 2 0 0 0 2 2h3M8 21v-3a2 2 0 0 0-2-2H3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>';
     var STAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M7 20v-6M12 20V8M17 20v-10"/></svg>';
+    var CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 
     function isFullscreen() {
         return !!(document.fullscreenElement || document.webkitFullscreenElement);
@@ -30,6 +46,33 @@
         b.setAttribute('aria-label', b.title);
     }
 
+    function isAdminPage() {
+        var p = location.pathname || '';
+        var h = location.hash || '';
+        return p.indexOf('/dashboard') === 0 || h.indexOf('/dashboard') === 0;
+    }
+
+    function closeModal() {
+        var m = document.getElementById(MODAL_ID);
+        if (m && m.parentNode) m.parentNode.removeChild(m);
+    }
+
+    function openStats() {
+        if (document.getElementById(MODAL_ID)) return;
+        var m = document.createElement('div');
+        m.id = MODAL_ID;
+        m.className = 'zxsos-modal';
+        m.innerHTML =
+            '<div class="zxsos-modal-box">' +
+                '<div class="zxsos-modal-bar"><span>文件夹占用统计</span>' +
+                '<button type="button" class="zxsos-modal-close" aria-label="关闭">' + CLOSE + '</button></div>' +
+                '<iframe src="/folder-stats?embed=1" title="文件夹占用统计"></iframe>' +
+            '</div>';
+        document.body.appendChild(m);
+        m.querySelector('.zxsos-modal-close').addEventListener('click', closeModal);
+        m.addEventListener('click', function (e) { if (e.target === m) closeModal(); });
+    }
+
     function build() {
         if (document.getElementById(WRAP_ID)) return;
 
@@ -37,17 +80,19 @@
         wrap.id = WRAP_ID;
         wrap.className = 'zxsos-tools';
 
-        var stat = document.createElement('a');
+        var stat = document.createElement('button');
+        stat.id = STAT_ID;
         stat.className = 'zxsos-tool-btn';
-        stat.href = '/folder-stats';
+        stat.type = 'button';
+        stat.innerHTML = STAT;
         stat.title = '文件夹占用统计';
         stat.setAttribute('aria-label', '文件夹占用统计');
-        stat.innerHTML = STAT;
+        stat.addEventListener('click', openStats);
         wrap.appendChild(stat);
 
         var fs = document.createElement('button');
-        fs.className = 'zxsos-tool-btn';
         fs.id = FS_ID;
+        fs.className = 'zxsos-tool-btn';
         fs.type = 'button';
         fs.innerHTML = FS_ENTER;
         fs.addEventListener('click', toggleFullscreen);
@@ -55,16 +100,28 @@
 
         document.body.appendChild(wrap);
         syncFs();
+        syncVisibility();
     }
 
+    // 只在管理端显示统计入口；仅切换 display，不触碰 Vue 管理的 DOM
+    function syncVisibility() {
+        var s = document.getElementById(STAT_ID);
+        if (s) s.style.display = isAdminPage() ? '' : 'none';
+    }
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeModal();
+    });
     document.addEventListener('fullscreenchange', syncFs);
     document.addEventListener('webkitfullscreenchange', syncFs);
 
-    // 只执行一次，不监听 DOM 变化，避免与 Vue 渲染互相触发
     if (document.body) build();
     else document.addEventListener('DOMContentLoaded', build);
+
+    setInterval(syncVisibility, 1500);
 })();
 </script>
+
 
 </body></html><style>/* 下拉菜单样式 */
 .el-dropdown__popper.el-popper {
@@ -128,5 +185,270 @@
 /* 全屏时铺满，避免黑边 */
 html:fullscreen, html:fullscreen body { width: 100%; height: 100%; }
 :fullscreen::backdrop { background: var(--bg-color); }
+
+/* ===== 文件夹显示修复 ===== */
+/* 触屏没有 hover，操作层改为常显，否则手机上永远点不到 */
+@media (hover: none) {
+    .folder-overlay[data-v-3dcaec2e] { opacity: 1 !important; }
+    .folder-actions[data-v-3dcaec2e] { bottom: 8% !important; }
+}
+@media (max-width: 768px) {
+    .folder-icon[data-v-3dcaec2e] { height: 11vh !important; }
+    .folder-overlay[data-v-3dcaec2e] { opacity: 1 !important; }
+    .folder-actions[data-v-3dcaec2e] { bottom: 5% !important; gap: 6px !important; }
+    .img-card[data-v-3dcaec2e] { font-size: .9em !important; }
+}
+
+
+/* ===== 统计弹层 ===== */
+.zxsos-modal {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, .45);
+    padding: 24px;
+}
+.zxsos-modal-box {
+    width: min(900px, 100%); max-height: 88vh;
+    display: flex; flex-direction: column;
+    background: #fff; color: #2c3a47;
+    border-radius: 16px; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .28);
+}
+@media (prefers-color-scheme: dark) {
+    .zxsos-modal-box { background: #282d34; color: #e8eef5; }
+}
+.zxsos-modal-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; font-weight: 600;
+    border-bottom: 1px solid rgba(128, 128, 128, .2);
+}
+.zxsos-modal-close {
+    border: none; background: transparent; cursor: pointer; color: inherit;
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+}
+.zxsos-modal-close:hover { background: rgba(128, 128, 128, .18); }
+.zxsos-modal-close svg { width: 16px; height: 16px; }
+.zxsos-modal iframe { flex: 1; width: 100%; min-height: 420px; border: 0; }
+
+/* ===== 管理端适配 ===== */
+@media (max-width: 768px) {
+    /* 侧边栏改底部横向导航，避免遮挡内容 */
+    .sidebar-container[data-v-38ff1368] {
+        top: auto !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        flex-direction: row !important;
+        justify-content: space-around !important;
+        align-items: center !important;
+        border-right: none !important;
+        border-top: 1px dashed var(--admin-syscfg-tabs-border-color) !important;
+        background-color: var(--admin-header-content-bg-color) !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+        z-index: 400 !important;
+        overflow-x: auto !important;
+    }
+    .sidebar-container[data-v-38ff1368] > * {
+        flex: 0 0 auto !important;
+        min-width: 44px !important;
+        min-height: 44px !important;
+    }
+
+    /* 内容区为底部导航留白 */
+    .container[data-v-3dcaec2e] {
+        min-height: 100dvh !important;
+        padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    /* 图片网格：手机两列 */
+    .content[data-v-3dcaec2e] {
+        grid-template-columns: repeat(2, 1fr) !important;
+        grid-template-rows: none !important;
+        gap: 10px !important;
+        padding: 10px !important;
+    }
+
+    .header-content[data-v-3dcaec2e] {
+        padding: 10px 12px !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+    .breadcrumb[data-v-3dcaec2e] { padding: 10px !important; font-size: 1em !important; }
+    .stats[data-v-3dcaec2e] { font-size: 1em !important; padding: 6px 10px !important; }
+    .search-card[data-v-3dcaec2e] .el-input__inner,
+    .search-card[data-v-3dcaec2e] .el-input__inner:focus {
+        width: 100% !important;
+        font-size: 16px !important;
+    }
+    .load-more[data-v-3dcaec2e],
+    .refresh-btn[data-v-3dcaec2e] { min-height: 44px !important; padding: 0 16px !important; }
+
+    /* 弹层在手机上全屏 */
+    .zxsos-modal { padding: 0; }
+    .zxsos-modal-box { width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
+    .zxsos-modal iframe { min-height: 0; }
+}
+
+@media (max-width: 420px) {
+    .content[data-v-3dcaec2e] { grid-template-columns: 1fr !important; }
+}
+
+/* 桌面端：网格自适应列数 */
+@media (min-width: 1025px) {
+    .content[data-v-3dcaec2e] {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
+        grid-template-rows: none !important;
+        gap: 18px !important;
+    }
+}
+@media (min-width: 769px) and (max-width: 1024px) {
+    .content[data-v-3dcaec2e] {
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important;
+        grid-template-rows: none !important;
+    }
+}
+
+
+/* ===== 响应式与性能优化 ===== */
+/* 动态视口高度：避免移动端地址栏伸缩引起页面跳动 */
+@supports (height: 100dvh) {
+    .upload-home[data-v-3c03dd8c], .container[data-v-3c03dd8c] { min-height: 100dvh; }
+}
+
+/* 桌面端：放宽卡片宽度、改善可读性 */
+@media (min-width: 1025px) {
+    .upload-card[data-v-aec705ec],
+    .upload-list-card[data-v-aec705ec],
+    .upload-list-container[data-v-aec705ec] {
+        width: min(1040px, 70vw) !important;
+    }
+    .upload-list-item[data-v-aec705ec] { padding: 8px 12px !important; margin: 8px 0 !important; }
+    .upload-list-item-name[data-v-aec705ec] { width: 24vw !important; }
+    .upload-list-item-url-row[data-v-aec705ec] { width: 34vw !important; }
+    .paste-card[data-v-aec705ec] { height: 44vh !important; }
+    .paste-card-actions[data-v-aec705ec] { width: 44vw !important; }
+    .upload-folder[data-v-3c03dd8c] { width: 150px !important; }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .upload-card[data-v-aec705ec],
+    .upload-list-card[data-v-aec705ec],
+    .upload-list-container[data-v-aec705ec] { width: min(860px, 82vw) !important; }
+    .upload-list-item-name[data-v-aec705ec] { width: 26vw !important; }
+}
+
+/* 移动端 */
+@media (max-width: 768px) {
+    /* 顶部固定控件：重排避免拥挤，放大点按区域 */
+    .toggle-dark-button[data-v-3c03dd8c],
+    .upload-method-button[data-v-3c03dd8c] {
+        top: 14px !important;
+        right: 14px !important;
+        min-width: 2.6rem !important;
+        min-height: 2.6rem !important;
+    }
+    .info-container[data-v-3c03dd8c] {
+        top: 14px !important;
+        right: 64px !important;
+        width: 2.4rem !important;
+        height: 2.4rem !important;
+    }
+    .upload-folder[data-v-3c03dd8c] {
+        top: 14px !important;
+        right: auto !important;
+        left: 14px !important;
+        width: 40vw !important;
+        max-width: 190px !important;
+        height: 2.4rem !important;
+    }
+    /* 输入框 >=16px，阻止 iOS 聚焦时自动缩放 */
+    .upload-folder[data-v-3c03dd8c] input,
+    .el-input__inner, .el-textarea__inner, textarea, input {
+        font-size: 16px !important;
+    }
+
+    /* 标题：给顶部控件让位 */
+    .header[data-v-3c03dd8c] { margin-top: 4.2rem !important; padding: 8px 12px !important; }
+    .title[data-v-3c03dd8c] { font-size: 1.6rem !important; }
+
+    /* 卡片：占满可用宽度，更好点按与阅读 */
+    .upload-card[data-v-aec705ec],
+    .upload-list-card[data-v-aec705ec],
+    .upload-list-container[data-v-aec705ec] {
+        width: 92vw !important;
+        max-width: 560px !important;
+    }
+    .paste-card[data-v-aec705ec] { height: 40vh !important; }
+    .paste-card-actions[data-v-aec705ec] { width: 84vw !important; flex-wrap: wrap !important; row-gap: 8px !important; }
+
+    /* 列表项：给文件名和链接更多空间 */
+    .upload-list-item[data-v-aec705ec] { padding: 10px !important; margin: 8px 0 !important; gap: 6px !important; }
+    .upload-list-item-name[data-v-aec705ec] {
+        width: 46vw !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-all !important;
+    }
+    .upload-list-item-url-row[data-v-aec705ec] { width: 48vw !important; }
+    .upload-list-item-progress[data-v-aec705ec] { width: 46vw !important; }
+    .upload-list-item-action-button[data-v-aec705ec] { margin: 3px !important; }
+
+    /* 触摸目标 >=44px */
+    .toolbar-button[data-v-3c03dd8c],
+    .toolbar-manage-button[data-v-3c03dd8c] {
+        min-width: 2.75rem !important;
+        min-height: 2.75rem !important;
+    }
+
+    /* 关键性能：移动端关掉毛玻璃，改用实色背景补偿 */
+    .toolbar-button[data-v-3c03dd8c],
+    .toolbar-manage-button[data-v-3c03dd8c],
+    .toggle-dark-button[data-v-3c03dd8c],
+    .upload-method-button[data-v-3c03dd8c],
+    .info-container[data-v-3c03dd8c],
+    .upload-list-card[data-v-aec705ec],
+    .upload-list-dashboard[data-v-aec705ec],
+    .zxsos-tool-btn {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+    .upload-list-card[data-v-aec705ec] { background-color: var(--upload-list-card-bg-color) !important; }
+
+    /* 背景图：降低合成开销 */
+    .background-image1[data-v-3c03dd8c],
+    .background-image2[data-v-3c03dd8c] {
+        transform: translateZ(0);
+        will-change: opacity;
+    }
+
+    /* 注入工具栏：贴合屏幕边缘并避开安全区 */
+    .zxsos-tools {
+        left: 14px !important;
+        bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    .zxsos-tool-btn { width: 44px !important; height: 44px !important; }
+    .toolbar[data-v-3c03dd8c],
+    .toolbar-manage[data-v-3c03dd8c] {
+        right: 14px !important;
+        bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+}
+
+/* 超窄屏 */
+@media (max-width: 380px) {
+    .title[data-v-3c03dd8c] { font-size: 1.35rem !important; }
+    .upload-folder[data-v-3c03dd8c] { width: 34vw !important; }
+    .upload-list-item-name[data-v-aec705ec] { width: 40vw !important; }
+    .upload-list-item-url-row[data-v-aec705ec] { width: 42vw !important; }
+}
+
+/* 尊重系统降低动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
 
 </style>
