@@ -107,7 +107,24 @@
     function syncVisibility() {
         var s = document.getElementById(STAT_ID);
         if (s) s.style.display = isAdminPage() ? '' : 'none';
+        autoLoadMore();
     }
+
+    // 分页控件已移除：滚动到底自动触发「加载更多」
+    var lastAutoLoad = 0;
+    function autoLoadMore() {
+        if (!isAdminPage()) return;
+        var now = Date.now();
+        if (now - lastAutoLoad < 1500) return;
+        var btn = document.querySelector('.load-more');
+        if (!btn || btn.disabled) return;
+        var rect = btn.getBoundingClientRect();
+        if (rect.top < window.innerHeight + 120) {
+            lastAutoLoad = now;
+            btn.click();
+        }
+    }
+    window.addEventListener('scroll', autoLoadMore, { passive: true });
 
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') closeModal();
@@ -186,6 +203,52 @@
 html:fullscreen, html:fullscreen body { width: 100%; height: 100%; }
 :fullscreen::backdrop { background: var(--bg-color); }
 
+/* 文件卡片：预览图按统一高度裁切，避免长图把卡片撑成长条 */
+.img-card[data-v-3dcaec2e] img {
+    width: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+@media (min-width: 1441px) {
+    .img-card[data-v-3dcaec2e] img { max-height: 150px !important; }
+}
+@media (min-width: 769px) and (max-width: 1440px) {
+    .img-card[data-v-3dcaec2e] img { max-height: 128px !important; }
+}
+@media (max-width: 768px) {
+    .img-card[data-v-3dcaec2e] img { max-height: 96px !important; }
+}
+/* 卡片信息区：单行省略，防止文件名把卡片撑高 */
+.img-card[data-v-3dcaec2e] .file-info,
+.img-card[data-v-3dcaec2e] .file-short-info {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* 文件夹卡片：高度不再随视口拉伸，避免桌面端变成竖长条 */
+.content[data-v-3dcaec2e] { grid-auto-rows: auto !important; }
+@media (min-width: 769px) {
+    .folder-icon[data-v-3dcaec2e] { height: 110px !important; }
+    .folder-card[data-v-3dcaec2e] { display: flex !important; flex-direction: column !important; }
+}
+@media (min-width: 1441px) {
+    .folder-icon[data-v-3dcaec2e] { height: 128px !important; }
+}
+
+/* 移除管理端底部分页控件 */
+.pagination-container[data-v-3dcaec2e],
+.pagination-right[data-v-3dcaec2e] { display: none !important; }
+
+/* 加载更多按钮：居中、加宽，作为唯一的翻页入口 */
+.load-more[data-v-3dcaec2e] {
+    display: block !important;
+    margin: 16px auto !important;
+    padding: 0 28px !important;
+    min-height: 44px !important;
+    border-radius: 12px !important;
+}
+
 /* ===== 文件夹显示修复 ===== */
 /* 触屏没有 hover，操作层改为常显，否则手机上永远点不到 */
 @media (hover: none) {
@@ -193,7 +256,7 @@ html:fullscreen, html:fullscreen body { width: 100%; height: 100%; }
     .folder-actions[data-v-3dcaec2e] { bottom: 8% !important; }
 }
 @media (max-width: 768px) {
-    .folder-icon[data-v-3dcaec2e] { height: 11vh !important; }
+    .folder-icon[data-v-3dcaec2e] { height: 84px !important; }
     .folder-overlay[data-v-3dcaec2e] { opacity: 1 !important; }
     .folder-actions[data-v-3dcaec2e] { bottom: 5% !important; gap: 6px !important; }
     .img-card[data-v-3dcaec2e] { font-size: .9em !important; }
@@ -264,9 +327,9 @@ html:fullscreen, html:fullscreen body { width: 100%; height: 100%; }
         padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
     }
 
-    /* 图片网格：手机两列 */
+    /* 图片网格：按可用宽度自动排布，窄屏也不至于一行一张 */
     .content[data-v-3dcaec2e] {
-        grid-template-columns: repeat(2, 1fr) !important;
+        grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)) !important;
         grid-template-rows: none !important;
         gap: 10px !important;
         padding: 10px !important;
@@ -293,22 +356,26 @@ html:fullscreen, html:fullscreen body { width: 100%; height: 100%; }
     .zxsos-modal iframe { min-height: 0; }
 }
 
-@media (max-width: 420px) {
-    .content[data-v-3dcaec2e] { grid-template-columns: 1fr !important; }
+@media (max-width: 360px) {
+    .content[data-v-3dcaec2e] {
+        grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)) !important;
+        gap: 8px !important;
+    }
 }
 
 /* 桌面端：网格自适应列数 */
 @media (min-width: 1025px) {
     .content[data-v-3dcaec2e] {
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important;
         grid-template-rows: none !important;
-        gap: 18px !important;
+        gap: 14px !important;
     }
 }
 @media (min-width: 769px) and (max-width: 1024px) {
     .content[data-v-3dcaec2e] {
-        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
         grid-template-rows: none !important;
+        gap: 12px !important;
     }
 }
 
