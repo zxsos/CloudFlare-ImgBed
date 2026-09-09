@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>文件夹占用统计</title>
+<style>
+:root {
+    --bg: linear-gradient(135deg, #eef4fb, #f7f9fc);
+    --card-bg: rgba(255, 255, 255, .78);
+    --card-border: 1px solid rgba(50, 126, 204, .18);
+    --card-shadow: 0 8px 24px rgba(50, 126, 204, .12);
+    --text: #2c3a47;
+    --text-dim: #6b7c8d;
+    --accent: #327ecc;
+    --accent-soft: rgba(50, 126, 204, .12);
+    --bar: linear-gradient(90deg, #78aeec, #327ecc);
+    --row-hover: rgba(50, 126, 204, .07);
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: linear-gradient(135deg, #1b1f24, #12151a);
+        --card-bg: rgba(40, 45, 52, .78);
+        --card-border: 1px solid rgba(143, 173, 200, .22);
+        --card-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+        --text: #e8eef5;
+        --text-dim: #9bb0c4;
+        --accent: #8fadc8;
+        --accent-soft: rgba(143, 173, 200, .14);
+        --bar: linear-gradient(90deg, #effac3, #8fadc8);
+        --row-hover: rgba(143, 173, 200, .1);
+    }
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 40px 20px 60px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 900px; margin: 0 auto; }
+h1 {
+    font-size: 26px;
+    margin: 0 0 4px;
+    letter-spacing: .5px;
+}
+.sub { color: var(--text-dim); font-size: 13px; margin-bottom: 26px; }
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 26px;
+}
+.card {
+    background: var(--card-bg);
+    border: var(--card-border);
+    border-radius: 16px;
+    padding: 18px 20px;
+    box-shadow: var(--card-shadow);
+    backdrop-filter: blur(10px);
+}
+.card .label { font-size: 12px; color: var(--text-dim); letter-spacing: .6px; }
+.card .value { font-size: 24px; font-weight: 650; margin-top: 6px; }
+.card .unit { font-size: 13px; font-weight: 400; color: var(--text-dim); margin-left: 3px; }
+
+.panel {
+    background: var(--card-bg);
+    border: var(--card-border);
+    border-radius: 16px;
+    box-shadow: var(--card-shadow);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+}
+.toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--card-border);
+}
+.btn {
+    border: none;
+    cursor: pointer;
+    padding: 7px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    transition: all .2s ease;
+    font-family: inherit;
+}
+.btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.btn.active { background: var(--accent); color: #fff; }
+.spacer { flex: 1; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 12px 18px; text-align: left; }
+th {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-weight: 600;
+    letter-spacing: .5px;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+th:hover { color: var(--accent); }
+tbody tr { border-top: 1px solid var(--card-border); transition: background .2s ease; }
+tbody tr:hover { background: var(--row-hover); }
+td.name { font-weight: 550; word-break: break-all; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar {
+    height: 7px;
+    border-radius: 4px;
+    background: var(--accent-soft);
+    overflow: hidden;
+    min-width: 90px;
+}
+.bar > i { display: block; height: 100%; border-radius: 4px; background: var(--bar); transition: width .6s cubic-bezier(.4,0,.2,1); }
+.pct { font-variant-numeric: tabular-nums; color: var(--text-dim); font-size: 12px; margin-top: 5px; }
+
+.state { padding: 44px 18px; text-align: center; color: var(--text-dim); font-size: 14px; }
+.err { color: #e06c75; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin {
+    display: inline-block; width: 17px; height: 17px; margin-right: 8px; vertical-align: -3px;
+    border: 2px solid var(--accent-soft); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .8s linear infinite;
+}
+footer { text-align: center; color: var(--text-dim); font-size: 12px; margin-top: 22px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <h1>文件夹占用统计</h1>
+    <div class="sub">按文件夹聚合文件数量与占用空间，数据来自 KV 记录</div>
+
+    <div class="cards">
+        <div class="card"><div class="label">文件夹</div><div class="value" id="c-folders">–</div></div>
+        <div class="card"><div class="label">文件总数</div><div class="value" id="c-files">–</div></div>
+        <div class="card"><div class="label">总占用</div><div class="value" id="c-size">–</div></div>
+    </div>
+
+    <div class="panel">
+        <div class="toolbar">
+            <button class="btn active" data-group="top">顶层文件夹</button>
+            <button class="btn" data-group="all">完整路径</button>
+            <div class="spacer"></div>
+            <button class="btn" id="refresh">刷新</button>
+        </div>
+        <div id="body"><div class="state"><span class="spin"></span>加载中…</div></div>
+    </div>
+
+    <footer>点击表头可切换排序</footer>
+</div>
+
+<script>
+(function () {
+    var group = 'top';
+    var sortKey = 'sizeMb';
+    var sortDesc = true;
+    var data = null;
+
+    var $ = function (id) { return document.getElementById(id); };
+
+    function fmtSize(mb) {
+        if (mb >= 1024) return (mb / 1024).toFixed(2) + '<span class="unit">GB</span>';
+        if (mb >= 1) return mb.toFixed(2) + '<span class="unit">MB</span>';
+        return (mb * 1024).toFixed(1) + '<span class="unit">KB</span>';
+    }
+    function esc(s) {
+        return String(s).replace(/[&<>"]/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+    }
+
+    function load() {
+        $('body').innerHTML = '<div class="state"><span class="spin"></span>加载中…</div>';
+        fetch('/api/manage/folderStats?group=' + group)
+            .then(function (r) {
+                if (r.status === 401) throw new Error('需要管理员登录（请输入管理端账号密码）');
+                if (!r.ok) throw new Error('请求失败：HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (res) {
+                if (res.error) throw new Error(res.error);
+                data = res;
+                $('c-folders').textContent = res.total.folderCount;
+                $('c-files').textContent = res.total.files;
+                $('c-size').innerHTML = fmtSize(res.total.sizeMb);
+                render();
+            })
+            .catch(function (e) {
+                $('body').innerHTML = '<div class="state err">' + esc(e.message) + '</div>';
+            });
+    }
+
+    function render() {
+        if (!data) return;
+        if (!data.folders.length) {
+            $('body').innerHTML = '<div class="state">暂无文件记录</div>';
+            return;
+        }
+
+        var rows = data.folders.slice().sort(function (a, b) {
+            var va = a[sortKey], vb = b[sortKey], r;
+            if (typeof va === 'string') r = va.localeCompare(vb);
+            else r = va - vb;
+            return sortDesc ? -r : r;
+        });
+
+        var max = rows[0].sizeMb || 1;
+        var html = '<table><thead><tr>' +
+            '<th data-k="name">文件夹</th>' +
+            '<th data-k="files">文件数</th>' +
+            '<th data-k="sizeMb">占用</th>' +
+            '<th>占比</th>' +
+            '</tr></thead><tbody>';
+
+        rows.forEach(function (f) {
+            var w = Math.max(2, (f.sizeMb / max) * 100);
+            html += '<tr>' +
+                '<td class="name">' + esc(f.name) + '</td>' +
+                '<td class="num">' + f.files + '</td>' +
+                '<td class="num">' + fmtSize(f.sizeMb) + '</td>' +
+                '<td><div class="bar"><i style="width:' + w.toFixed(1) + '%"></i></div>' +
+                '<div class="pct">' + f.percent + '%</div></td>' +
+                '</tr>';
+        });
+
+        html += '</tbody></table>';
+        $('body').innerHTML = html;
+
+        Array.prototype.forEach.call(document.querySelectorAll('th[data-k]'), function (th) {
+            th.onclick = function () {
+                var k = th.getAttribute('data-k');
+                if (sortKey === k) sortDesc = !sortDesc;
+                else { sortKey = k; sortDesc = (k !== 'name'); }
+                render();
+            };
+        });
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('.btn[data-group]'), function (b) {
+        b.onclick = function () {
+            Array.prototype.forEach.call(document.querySelectorAll('.btn[data-group]'), function (x) {
+                x.classList.remove('active');
+            });
+            b.classList.add('active');
+            group = b.getAttribute('data-group');
+            load();
+        };
+    });
+    $('refresh').onclick = load;
+
+    load();
+})();
+</script>
+</body>
+</html>
