@@ -1,9 +1,9 @@
 <!doctype html><html lang=""><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="/logo.png"><link rel="apple-touch-icon" href="/logo.png"><link rel="mask-icon" href="/logo.png" color="#f4b400"><meta name="description" content="zxsos ImgHub - A modern file hosting platform"><meta name="keywords" content="zxsos, ImgHub, file hosting, image hosting, cloud storage"><meta name="author" content="zxsos"><title>zxsos ImgHub</title><script defer="defer" src="/js/app.2ca03bec.js"></script><link href="/css/app.b0a6c83b.css" rel="stylesheet"></head><body><noscript><strong>We're sorry but zxsos_imghub doesn't work properly without JavaScript enabled. Please enable it to continue.</strong></noscript><div id="app"></div>
+
 <script>
 (function () {
-    var ID_FS = 'zxsos-fullscreen-btn';
-    var ID_STAT = 'zxsos-stats-btn';
-    var WRAP = 'zxsos-float-wrap';
+    var WRAP_ID = 'zxsos-tools';
+    var FS_ID = 'zxsos-fullscreen-btn';
 
     var FS_ENTER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
     var FS_EXIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3M16 3v3a2 2 0 0 0 2 2h3M8 21v-3a2 2 0 0 0-2-2H3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>';
@@ -23,73 +23,49 @@
     }
 
     function syncFs() {
-        var b = document.getElementById(ID_FS);
+        var b = document.getElementById(FS_ID);
         if (!b) return;
         b.innerHTML = isFullscreen() ? FS_EXIT : FS_ENTER;
         b.title = isFullscreen() ? '退出全屏' : '进入全屏';
         b.setAttribute('aria-label', b.title);
     }
 
-    function toolbar() {
-        return document.querySelector('.toolbar') || document.querySelector('.toolbar-manage');
-    }
+    function build() {
+        if (document.getElementById(WRAP_ID)) return;
 
-    function floatWrap() {
-        var w = document.getElementById(WRAP);
-        if (!w) {
-            w = document.createElement('div');
-            w.id = WRAP;
-            w.className = 'zxsos-float-wrap';
-            document.body.appendChild(w);
-        }
-        return w;
-    }
+        var wrap = document.createElement('div');
+        wrap.id = WRAP_ID;
+        wrap.className = 'zxsos-tools';
 
-    function make(cls, html, title, onClick, href) {
-        var el = document.createElement(href ? 'a' : 'button');
-        el.className = cls;
-        el.innerHTML = html;
-        el.title = title;
-        el.setAttribute('aria-label', title);
-        if (href) { el.href = href; } else { el.type = 'button'; el.addEventListener('click', onClick); }
-        return el;
-    }
+        var stat = document.createElement('a');
+        stat.className = 'zxsos-tool-btn';
+        stat.href = '/folder-stats';
+        stat.title = '文件夹占用统计';
+        stat.setAttribute('aria-label', '文件夹占用统计');
+        stat.innerHTML = STAT;
+        wrap.appendChild(stat);
 
-    function mount() {
-        if (document.getElementById(ID_FS) && document.getElementById(ID_STAT)) return false;
+        var fs = document.createElement('button');
+        fs.className = 'zxsos-tool-btn';
+        fs.id = FS_ID;
+        fs.type = 'button';
+        fs.innerHTML = FS_ENTER;
+        fs.addEventListener('click', toggleFullscreen);
+        wrap.appendChild(fs);
 
-        var tb = toolbar();
-        var wrap = document.getElementById(WRAP);
-
-        // 工具栏就绪后，把兜底容器里的按钮归位
-        if (tb && wrap) {
-            while (wrap.firstChild) tb.appendChild(wrap.firstChild);
-            wrap.parentNode && wrap.parentNode.removeChild(wrap);
-        }
-        var host = tb || floatWrap();
-
-        if (!document.getElementById(ID_STAT)) {
-            host.appendChild(make('zxsos-tool-btn', STAT, '文件夹占用统计', null, '/folder-stats'));
-        }
-        if (!document.getElementById(ID_FS)) {
-            host.appendChild(make('zxsos-tool-btn', FS_ENTER, '进入全屏', toggleFullscreen));
-        }
+        document.body.appendChild(wrap);
         syncFs();
-        return true;
     }
 
     document.addEventListener('fullscreenchange', syncFs);
     document.addEventListener('webkitfullscreenchange', syncFs);
 
-    // SPA 路由切换会重建工具栏，用观察者保证按钮常驻
-    if (window.MutationObserver) {
-        new MutationObserver(mount).observe(document.body, { childList: true, subtree: true });
-    }
-    document.addEventListener('DOMContentLoaded', mount);
-    mount();
-    setInterval(mount, 1000);
+    // 只执行一次，不监听 DOM 变化，避免与 Vue 渲染互相触发
+    if (document.body) build();
+    else document.addEventListener('DOMContentLoaded', build);
 })();
 </script>
+
 </body></html><style>/* 下拉菜单样式 */
 .el-dropdown__popper.el-popper {
     border-radius: 12px;
@@ -116,7 +92,16 @@
     border-radius: 12px;
 }
 
-/* ===== 注入：全屏 / 统计按钮 ===== */
+
+/* ===== 注入：全屏 / 统计按钮（独立容器，不介入 Vue 渲染） ===== */
+.zxsos-tools {
+    position: fixed;
+    left: 30px;
+    bottom: 50px;
+    display: flex;
+    flex-direction: column;
+    z-index: 300;
+}
 .zxsos-tool-btn {
     border: none;
     transition: all .3s ease;
@@ -136,18 +121,12 @@
     backdrop-filter: blur(10px);
     color: var(--toolbar-button-color);
 }
+.zxsos-tools .zxsos-tool-btn:first-child { margin-top: 0; }
 .zxsos-tool-btn:hover { filter: brightness(1.15); transform: scale(1.06); }
 .zxsos-tool-btn:active { transform: scale(.94); }
 .zxsos-tool-btn svg { width: 18px; height: 18px; }
-.zxsos-float-wrap {
-    position: fixed;
-    left: 30px;
-    bottom: 50px;
-    display: flex;
-    flex-direction: column;
-    z-index: 300;
-}
 /* 全屏时铺满，避免黑边 */
 html:fullscreen, html:fullscreen body { width: 100%; height: 100%; }
 :fullscreen::backdrop { background: var(--bg-color); }
+
 </style>
